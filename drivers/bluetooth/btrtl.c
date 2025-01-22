@@ -422,19 +422,6 @@ static int btrtl_vendor_read_reg16(struct hci_dev *hdev,
 	return 0;
 }
 
-static int btrtl_vendor_read_reg16_unlocked(struct hci_dev *hdev,
-                                           struct rtl_vendor_cmd *cmd, u8 *rp)
-{
-       int ret;
-
-       mutex_lock(&hdev->req_lock);
-       ret = btrtl_vendor_read_reg16(hdev, cmd, rp);
-       mutex_unlock(&hdev->req_lock);
-
-       return ret;
-}
-
-
 static int btrtl_vendor_write_reg16(struct hci_dev *hdev,
 				    struct rtl_vendor_cmd *cmd, const u8 * const rp)
 {
@@ -461,18 +448,6 @@ static int btrtl_vendor_write_reg16(struct hci_dev *hdev,
 	kfree_skb(skb);
 
 	return 0;
-}
-
-static int btrtl_vendor_write_reg16_unlocked(struct hci_dev *hdev,
-					     struct rtl_vendor_cmd *cmd, u8 *rp)
-{
-       int ret;
-
-       mutex_lock(&hdev->req_lock);
-       ret = btrtl_vendor_write_reg16(hdev, cmd, rp);
-       mutex_unlock(&hdev->req_lock);
-
-       return ret;
 }
 
 static void *rtl_iov_pull_data(struct rtl_iovec *iov, u32 len)
@@ -1562,7 +1537,7 @@ int btrtl_suspend(struct hci_dev *hdev, pm_message_t message)
 	if (!btrealtek_test_flag(hdev, REALTEK_CAN_IGNORE_BT_DIS))
 		return -EOPNOTSUPP;
 
-	ret = btrtl_vendor_read_reg16_unlocked(hdev, RTL_IGNORE_MASK, buf);
+	ret = btrtl_vendor_read_reg16(hdev, RTL_IGNORE_MASK, buf);
 	if (ret)
 		return ret;
 
@@ -1570,7 +1545,7 @@ int btrtl_suspend(struct hci_dev *hdev, pm_message_t message)
 	ignore_mask |= RTL_IGNORE_BT_DIS;
 	put_unaligned_le16(ignore_mask, buf);
 
-	ret = btrtl_vendor_write_reg16_unlocked(hdev, RTL_IGNORE_MASK, buf);
+	ret = btrtl_vendor_write_reg16(hdev, RTL_IGNORE_MASK, buf);
 
 	return ret;
 }
@@ -1585,7 +1560,7 @@ int btrtl_resume(struct hci_dev *hdev)
 	if (!btrealtek_test_flag(hdev, REALTEK_CAN_IGNORE_BT_DIS))
 		return -EOPNOTSUPP;
 
-	ret = btrtl_vendor_read_reg16_unlocked(hdev, RTL_IGNORE_MASK, buf);
+	ret = btrtl_vendor_read_reg16(hdev, RTL_IGNORE_MASK, buf);
 	if (ret)
 		return ret;
 
@@ -1593,7 +1568,7 @@ int btrtl_resume(struct hci_dev *hdev)
 	ignore_mask &= ~RTL_IGNORE_BT_DIS;
 	put_unaligned_le16(ignore_mask, buf);
 
-	ret = btrtl_vendor_write_reg16_unlocked(hdev, RTL_IGNORE_MASK, buf);
+	ret = btrtl_vendor_write_reg16(hdev, RTL_IGNORE_MASK, buf);
 
 	return ret;
 }
