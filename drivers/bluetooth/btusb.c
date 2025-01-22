@@ -855,8 +855,6 @@ struct btusb_data {
 	int (*recv_bulk)(struct btusb_data *data, void *buffer, int count);
 
 	int (*setup_on_usb)(struct hci_dev *hdev);
-	int (*suspend)(struct hci_dev *hdev, pm_message_t message);
-	int (*resume)(struct hci_dev *hdev);
 
 	int oob_wake_irq;   /* irq for out-of-band wake-on-bt */
 	unsigned cmd_timeout_cnt;
@@ -4469,8 +4467,6 @@ static int btusb_probe(struct usb_interface *intf,
 		hdev->shutdown = btrtl_shutdown_realtek;
 		hdev->cmd_timeout = btusb_rtl_cmd_timeout;
 		hdev->hw_error = btusb_rtl_hw_error;
-		data->suspend = btrtl_suspend;
-		data->resume = btrtl_resume;
 
 		/* Realtek devices need to set remote wakeup on auto-suspend */
 		set_bit(BTUSB_WAKEUP_AUTOSUSPEND, &data->flags);
@@ -4631,8 +4627,6 @@ static void btusb_disconnect(struct usb_interface *intf)
 static int btusb_suspend(struct usb_interface *intf, pm_message_t message)
 {
 	struct btusb_data *data = usb_get_intfdata(intf);
-	struct hci_dev *hdev = data->hdev;
-	int ret = 0;
 
 	BT_DBG("intf %p", intf);
 
@@ -4642,11 +4636,6 @@ static int btusb_suspend(struct usb_interface *intf, pm_message_t message)
 
 	if (data->suspend_count++)
 		return 0;
-
-	if (data->suspend)
-		ret = data->suspend(hdev, message);
-	if (ret && ret != -EOPNOTSUPP)
-		return ret;
 
 	spin_lock_irq(&data->txlock);
 	if (!(PMSG_IS_AUTO(message) && data->tx_in_flight)) {
@@ -4768,11 +4757,6 @@ static int btusb_resume(struct usb_interface *intf)
 	clear_bit(BTUSB_SUSPENDING, &data->flags);
 	spin_unlock_irq(&data->txlock);
 	schedule_work(&data->work);
-
-	if (data->resume)
-		err = data->resume(hdev);
-	if (err && err != -EOPNOTSUPP)
-		goto done;
 
 	return 0;
 
